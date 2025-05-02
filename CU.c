@@ -59,27 +59,37 @@ void readProgramAndStore()
 
 void ADD(int opr1, int opr2)
 {
+    int8_t Result = loadReg(&gprs,opr1) + loadReg(&gprs,opr2);
+    storeReg(&gprs, opr1, Result);
 }
 
 void SUB(int opr1, int opr2)
 {
+    int8_t Result = loadReg(&gprs,opr1) - loadReg(&gprs,opr2);
+    storeReg(&gprs, opr1, Result);
 }
 
 void MUL(int opr1, int opr2)
 {
+    int8_t Result = loadReg(&gprs,opr1) * loadReg(&gprs,opr2);
+    storeReg(&gprs, opr1, Result);
 }
 
 void EOR(int opr1, int opr2)
 {
+    int8_t Result = loadReg(&gprs,opr1) ^ loadReg(&gprs,opr2);
+    storeReg(&gprs, opr1, Result);
 }
 
 void BR(int opr1, int opr2)
 {
+    int8_t Result = (loadReg(&gprs,opr1)<<4) | loadReg(&gprs,opr2);
+    initPC(&sprs);
+    addToPC(&sprs, Result);
 }
 
 void MOVI(int opr1, int8_t imm)
 {
-
     storeReg(&gprs, opr1, imm);
 }
 

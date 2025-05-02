@@ -8,6 +8,7 @@ typedef struct{
 void storeInst(InstMemory* memory,int pos,short int instruction){
     if(pos < 0 || pos > 1023){
         printf("Invalid position");
+        return;
     }
     memory->instructions[pos] = instruction;
 }
@@ -15,6 +16,7 @@ void storeInst(InstMemory* memory,int pos,short int instruction){
 short int loadInst(InstMemory* memory,int pos){
     if(pos < 0 || pos > 1023){
         printf("Invalid position");
+        return;
     }
     return memory->instructions[pos];
 }
