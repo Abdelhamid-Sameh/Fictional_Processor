@@ -59,31 +59,31 @@ void readProgramAndStore()
 
 void ADD(int opr1, int opr2)
 {
-    int8_t Result = loadReg(&gprs,opr1) + loadReg(&gprs,opr2);
+    int8_t Result = loadReg(&gprs, opr1) + loadReg(&gprs, opr2);
     storeReg(&gprs, opr1, Result);
 }
 
 void SUB(int opr1, int opr2)
 {
-    int8_t Result = loadReg(&gprs,opr1) - loadReg(&gprs,opr2);
+    int8_t Result = loadReg(&gprs, opr1) - loadReg(&gprs, opr2);
     storeReg(&gprs, opr1, Result);
 }
 
 void MUL(int opr1, int opr2)
 {
-    int8_t Result = loadReg(&gprs,opr1) * loadReg(&gprs,opr2);
+    int8_t Result = loadReg(&gprs, opr1) * loadReg(&gprs, opr2);
     storeReg(&gprs, opr1, Result);
 }
 
 void EOR(int opr1, int opr2)
 {
-    int8_t Result = loadReg(&gprs,opr1) ^ loadReg(&gprs,opr2);
+    int8_t Result = loadReg(&gprs, opr1) ^ loadReg(&gprs, opr2);
     storeReg(&gprs, opr1, Result);
 }
 
 void BR(int opr1, int opr2)
 {
-    int8_t Result = (loadReg(&gprs,opr1)<<4) | loadReg(&gprs,opr2);
+    int8_t Result = (loadReg(&gprs, opr1) << 4) | loadReg(&gprs, opr2);
     initPC(&sprs);
     addToPC(&sprs, Result);
 }
@@ -264,7 +264,7 @@ void run()
             stages[0] = -1;
         }
 
-        if (stages[0] != -1 || stages[1] != -1 || stages[2] != -1)
+        if (stages[0] == -1 && stages[1] == -1 && stages[2] == -1)
         {
             break;
         }
@@ -307,5 +307,32 @@ void run()
 
 int main()
 {
+    SPRS sprs;
+    initSREG(&sprs);
+    printf("%d\n", getC(&sprs));
+    printf("%d\n", getV(&sprs));
+    printf("%d\n", getN(&sprs));
+    printf("%d\n", getS(&sprs));
+    printf("%d\n", getZ(&sprs));
+    setC(&sprs);
+    setV(&sprs);
+    setN(&sprs);
+    setS(&sprs);
+    setZ(&sprs);
+    printf("%d\n", getC(&sprs));
+    printf("%d\n", getV(&sprs));
+    printf("%d\n", getN(&sprs));
+    printf("%d\n", getS(&sprs));
+    printf("%d\n", getZ(&sprs));
+    unsetC(&sprs);
+    unsetV(&sprs);
+    unsetN(&sprs);
+    unsetS(&sprs);
+    unsetZ(&sprs);
+    printf("%d\n", getC(&sprs));
+    printf("%d\n", getV(&sprs));
+    printf("%d\n", getN(&sprs));
+    printf("%d\n", getS(&sprs));
+    printf("%d\n", getZ(&sprs));
     return 0;
 }

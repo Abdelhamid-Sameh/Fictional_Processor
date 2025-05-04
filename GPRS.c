@@ -12,7 +12,7 @@ void storeReg(GPRS *gprs, int regPos, int8_t data)
     if (regPos < 0 || regPos > 63)
     {
         printf("Invalid position");
-        return 0;
+        return;
     }
     gprs->Registers[regPos] = data;
 }
