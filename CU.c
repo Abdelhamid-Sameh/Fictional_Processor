@@ -6,6 +6,12 @@
 #include "DataMemory.h"
 #include "GPRS.h"
 #include "SPRS.h"
+#include <stdarg.h>
+
+InstMemory instMem;
+DataMemory dataMem;
+GPRS gprs;
+SPRS sprs;
 
 typedef struct
 {
@@ -15,12 +21,46 @@ typedef struct
     int opr2;         // 2nd Register
     int8_t imm;       // Immediate OR Address
     char mnemonic[5]; // Instruction name ("ADD", "SUB" and so on)
+    uint16_t pcSnap;  // 3shan caputre
 } DecodedInst;
 
-InstMemory instMem;
-DataMemory dataMem;
-GPRS gprs;
-SPRS sprs;
+typedef struct 
+{ 
+    int taken; 
+    uint16_t target;
+} BranchInfo;
+
+DecodedInst stageID, stageEX;
+BranchInfo  brInfo = {0};
+
+static void trace(const char *fmt, ...)
+{
+    va_list ap; va_start(ap, fmt);
+    printf("    >> ");                 /* 4-space indent */
+    vprintf(fmt, ap);
+    printf("\n");
+    va_end(ap);
+}
+
+static void writeReg(int r, int8_t val)
+{
+    int8_t old = loadReg(&gprs, r);
+    if (old != val) trace("R%d changed %d -> %d", r, old, val);
+    storeReg(&gprs, r, val);
+}
+
+static void writeMem(uint16_t addr, int8_t val)
+{
+    int8_t old = loadData(&dataMem, addr);
+    if (old != val) trace("MEM[%d] changed %d -> %d", addr, old, val);
+    storeData(&dataMem, addr, val);
+}
+
+#define F_C 0x10
+#define F_V 0x08
+#define F_N 0x04
+#define F_S 0x02
+#define F_Z 0x01
 
 int clock_cycles = 1;
 int stages[3] = {-1, -1, -1};
@@ -41,6 +81,44 @@ enum Opcodes
     OP_STR = 11
 };
 
+
+static void setNZ(int8_t res)
+{
+    if (res == 0) sprs.SREG |=  F_Z; else sprs.SREG &= ~F_Z;
+    if (res & 0x80) sprs.SREG |=  F_N; else sprs.SREG &= ~F_N;
+}
+
+static void setCarry(uint16_t wide)/* ADD only */
+{
+    if (wide & 0x100) sprs.SREG |=  F_C;
+    else               sprs.SREG &= ~F_C;
+}
+
+static void setV_add(int8_t a, int8_t b, int8_t res)/* ADD */
+{
+    if (((a ^ b) & 0x80) == 0 && ((a ^ res) & 0x80))
+        sprs.SREG |=  F_V;
+    else
+        sprs.SREG &= ~F_V;
+}
+
+static void setV_sub(int8_t a, int8_t b, int8_t res)/* SUB = a-b */
+{
+    if (((a ^ b) & 0x80) && ((a ^ res) & 0x80))
+        sprs.SREG |=  F_V;
+    else
+        sprs.SREG &= ~F_V;
+}
+
+static void updateS(void)/* S = N xor V */
+{
+    int n = (sprs.SREG & F_N) ? 1 : 0;
+    int v = (sprs.SREG & F_V) ? 1 : 0;
+    if (n ^ v) sprs.SREG |=  F_S;
+    else       sprs.SREG &= ~F_S;
+}
+
+
 void printAllRegs()
 {
 }
@@ -57,82 +135,149 @@ void readProgramAndStore()
     storeInst(&instMem, pos++, 61440);
 }
 
-void ADD(int opr1, int opr2)
+void ADD(int rd, int rs)
 {
-    int8_t Result = loadReg(&gprs, opr1) + loadReg(&gprs, opr2);
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;                     /* snapshot */
+    int8_t  a    = loadReg(&gprs, rd);
+    int8_t  b    = loadReg(&gprs, rs);
+    uint16_t w   = (uint8_t)a + (uint8_t)b;       /* 9-bit space */
+    int8_t  res  = (int8_t)w;
+
+    writeReg(rd, res);                            /* prints change */
+
+    setCarry(w);
+    setV_add(a, b, res);
+    setNZ(res);
+    updateS();
+
+    if(oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void SUB(int opr1, int opr2)
+
+void SUB(int rd, int rs)
 {
-    int8_t Result = loadReg(&gprs, opr1) - loadReg(&gprs, opr2);
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;
+
+    int8_t a   = loadReg(&gprs, rd);
+    int8_t b   = loadReg(&gprs, rs);
+    int8_t res = a - b;
+
+    writeReg(rd, res);
+
+    setV_sub(a, b, res);
+    setNZ(res);
+    updateS();
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void MUL(int opr1, int opr2)
+void MUL(int rd, int rs)
 {
-    int8_t Result = loadReg(&gprs, opr1) * loadReg(&gprs, opr2);
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;
+
+    int8_t res = loadReg(&gprs, rd) * loadReg(&gprs, rs);
+    writeReg(rd, res);
+
+    setNZ(res);
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void EOR(int opr1, int opr2)
+void EOR(int rd, int rs)
 {
-    int8_t Result = loadReg(&gprs, opr1) ^ loadReg(&gprs, opr2);
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;
+
+    int8_t res = loadReg(&gprs, rd) ^ loadReg(&gprs, rs);
+    writeReg(rd, res);
+
+    setNZ(res);
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void BR(int opr1, int opr2)
+
+BranchInfo BR(int rHigh, int rLow)
 {
-    int8_t Result = (loadReg(&gprs, opr1) << 4) | loadReg(&gprs, opr2);
-    initPC(&sprs);
-    addToPC(&sprs, Result);
+    uint16_t target = ((uint16_t)(uint8_t)loadReg(&gprs, rHigh) << 8) |
+                       (uint8_t)loadReg(&gprs, rLow);
+
+    sprs.PC = target;
+    trace("PC <- %u  (BR)", target);
+
+    return (BranchInfo){1, target};   /* taken = 1 */
 }
 
-void MOVI(int opr1, int8_t imm)
+void MOVI(int rd, int8_t imm)
 {
-    storeReg(&gprs, opr1, imm);
+    writeReg(rd, imm);          /* prints change */
 }
 
-void BEQZ(int opr1, int8_t imm)
+BranchInfo BEQZ(int rd, int8_t imm, uint16_t pcSnap)
 {
-    if (loadReg(&gprs, opr1) == 0)
-    {
-        addToPC(&sprs, 1 + imm);
+    if (loadReg(&gprs, rd) == 0) {
+        uint16_t target = pcSnap + 1 + (int8_t)imm;
+        sprs.PC = target;
+        trace("PC <- %u  (BEQZ taken)", target);
+        return (BranchInfo){1, target};
     }
+    return (BranchInfo){0, 0};        /* branch not taken */
 }
 
-void ANDI(int opr1, int8_t imm)
+void ANDI(int rd, int8_t imm)
 {
-    int8_t R = loadReg(&gprs, opr1);
-    int8_t Result = R & imm;
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;
+
+    int8_t res = loadReg(&gprs, rd) & imm;
+    writeReg(rd, res);
+
+    setNZ(res);
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void SAL(int opr1, int8_t imm)
+void SAL(int rd, int8_t imm)
 {
-    int8_t R = loadReg(&gprs, opr1);
-    int8_t Result = R << imm;
-    storeReg(&gprs, opr1, Result);
+    uint8_t oldS = sprs.SREG;
+
+    int8_t res = loadReg(&gprs, rd) << imm;
+    writeReg(rd, res);
+
+    setNZ(res);
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+}   
+
+void SAR(int rd, int8_t imm)
+{
+    uint8_t oldS = sprs.SREG;
+
+    int8_t res = loadReg(&gprs, rd) >> imm;   /* arithmetic shift */
+    writeReg(rd, res);
+
+    setNZ(res);
+
+    if (oldS != sprs.SREG)
+        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
 }
 
-void SAR(int opr1, int8_t imm)
+void LDR(int rd, int8_t address)          /* no flags */
 {
-    int8_t R = loadReg(&gprs, opr1);
-    int8_t Result = R >> imm;
-    storeReg(&gprs, opr1, Result);
+    int8_t memVal = loadData(&dataMem, (uint8_t)address);
+    writeReg(rd, memVal);                 /* prints “R changed …” */
 }
 
-void LDR(int opr1, int8_t address)
+void STR(int rs, int8_t address)
 {
-    int8_t memoryValue = loadData(&dataMem, address);
-    storeReg(&gprs, opr1, memoryValue);
+    int8_t R = loadReg(&gprs, rs);
+    writeMem((uint16_t)(uint8_t)address, R);
 }
 
-void STR(int opr1, int8_t address)
-{
-    int8_t R = loadReg(&gprs, opr1);
-    storeData(&dataMem, opr1, address);
-}
 
 short int fetch(int PC)
 {
@@ -233,9 +378,28 @@ DecodedInst decode(short int inst)
     return decoded;
 }
 
-void execute(DecodedInst decodedInst)
+BranchInfo execute(DecodedInst d)
 {
+    BranchInfo br = {0,0};
+    switch (d.operation)
+    {
+        case OP_ADD:  ADD (d.opr1, d.opr2); break;
+        case OP_SUB:  SUB (d.opr1, d.opr2); break;
+        case OP_MUL:  MUL (d.opr1, d.opr2); break;
+        case OP_MOVI: MOVI(d.opr1, d.imm ); break;
+        case OP_BEQZ: br = BEQZ(d.opr1, d.imm, d.pcSnap); break;
+        case OP_ANDI: ANDI(d.opr1, d.imm ); break;
+        case OP_EOR:  EOR (d.opr1, d.opr2); break;
+        case OP_BR:   br = BR  (d.opr1, d.opr2);          break;
+        case OP_SAL:  SAL (d.opr1, d.imm ); break;
+        case OP_SAR:  SAR (d.opr1, d.imm ); break;
+        case OP_LDR:  LDR (d.opr1, d.imm ); break;
+        case OP_STR:  STR (d.opr1, d.imm ); break;
+    }
+    return br;
 }
+
+
 
 void initREGS()
 {
@@ -253,19 +417,25 @@ void run()
     do
     {
         stages[2] = stages[1];
+        stageEX = stageID;
         stages[1] = stages[0];
 
-        if (loadInst(&instMem, sprs.PC) != 61440)
+        if (brInfo.taken) { stages[0] = -1; brInfo.taken = 0; }
+        else if (loadInst(&instMem, sprs.PC) != 61440)
         {
             stages[0] = sprs.PC;
+             short fetched = fetch(stages[0]);
+
+            stageID = decode(fetched);
+            stageID.pcSnap = stages[0];
+
+            incPC(&sprs);
         }
-        else
-        {
-            stages[0] = -1;
-        }
+        else stages[0] = -1;
+
 
         if (stages[0] == -1 && stages[1] == -1 && stages[2] == -1)
-        {
+        {   
             break;
         }
 
@@ -285,16 +455,7 @@ void run()
 
         if (stages[2] != -1)
         {
-            execute(decodedInst);
-        }
-        if (stages[1] != -1)
-        {
-            decodedInst = decode(fetchedInst);
-        }
-        if (stages[0] != -1)
-        {
-            fetchedInst = fetch(stages[0]);
-            incPC(&sprs);
+            brInfo = execute(stageEX);
         }
 
         clock_cycles++;
@@ -314,7 +475,7 @@ int main()
     printf("%d\n", getN(&sprs));
     printf("%d\n", getS(&sprs));
     printf("%d\n", getZ(&sprs));
-    setC(&sprs);
+    setCarry(&sprs);
     setV(&sprs);
     setN(&sprs);
     setS(&sprs);
