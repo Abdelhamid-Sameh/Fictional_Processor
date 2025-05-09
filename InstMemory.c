@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 typedef struct
 {
-    short int instructions[1024];
+    uint16_t instructions[1024];
 } InstMemory;
 
-void storeInst(InstMemory *memory, int pos, short int instruction)
+void storeInst(InstMemory *memory, int pos, uint16_t instruction)
 {
     if (pos < 0 || pos > 1023)
     {
@@ -16,7 +17,7 @@ void storeInst(InstMemory *memory, int pos, short int instruction)
     memory->instructions[pos] = instruction;
 }
 
-short int loadInst(InstMemory *memory, int pos)
+uint16_t loadInst(InstMemory *memory, int pos)
 {
     if (pos < 0 || pos > 1023)
     {
