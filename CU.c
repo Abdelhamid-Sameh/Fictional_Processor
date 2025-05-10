@@ -157,20 +157,14 @@ void printMemory()
     for (int i = 0; i < 1024; i++)
     {
         uint16_t inst = loadInst(&instMem, i);
-        if (inst != 0)
-        {
-            printf("IMEM[%d] = 0x%04X\n", i, inst);
-        }
+        printf("IMEM[%d] = 0x%04X\n", i, inst);
     }
 
     printf("\n==== Data Memory ====\n");
     for (int i = 0; i < 1024; i++)
     {
         int8_t val = loadData(&dataMem, i);
-        if (val != 0)
-        {
-            printf("DMEM[%d] = %d\n", i, val);
-        }
+        printf("DMEM[%d] = %d\n", i, val);
     }
 }
 
@@ -758,10 +752,6 @@ void run()
         else if (loadInst(&instMem, sprs.PC) != 0xC000)
         {
             stages[0] = sprs.PC;
-            short fetched = fetch(stages[0]);
-
-            stageID = decode(fetched);
-            stageID.pcSnap = stages[0];
 
             incPC(&sprs);
         }
@@ -792,6 +782,16 @@ void run()
         if (stages[2] != -1)
         {
             brInfo = execute(stageEX);
+        }
+        if (stages[1] != -1)
+        {
+            decodedInst = decode(fetchedInst);
+            stageID = decodedInst;
+            stageID.pcSnap = stages[1];
+        }
+        if (stages[0] != -1)
+        {
+            fetchedInst = fetch(stages[0]);
         }
         printf("PC = %d\n", sprs.PC);
         clock_cycles++;
