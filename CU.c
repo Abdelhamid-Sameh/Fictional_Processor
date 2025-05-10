@@ -171,92 +171,274 @@ void printMemory()
     }
 }
 
+void printBinary16(short int value)
+{
+    for (int i = 15; i >= 0; i--)
+    {
+        printf("%d", (value >> i) & 1);
+        if (i % 4 == 0 && i != 0)
+            printf(" ");
+    }
+}
+
+short int assembleInstruction(const char *line)
+{
+    char mnemonic[5];
+    int reg1, reg2, immediate;
+    short int binaryInst = 0b0000000000000000;
+
+    while (*line == ' ' || *line == '\t')
+        line++;
+
+    if (sscanf(line, "%4s R%d R%d", mnemonic, &reg1, &reg2) == 3)
+    {
+        if (reg1 < 0 || reg1 > 63 || reg2 < 0 || reg2 > 63)
+        {
+            fprintf(stderr, "Error: Invalid register number in instruction: %s\n", line);
+            exit(EXIT_FAILURE);
+        }
+
+        if (strcmp(mnemonic, "ADD") == 0)
+        {
+            binaryInst = (0b0000 << 12) | (reg1 << 6) | reg2;
+        }
+        else if (strcmp(mnemonic, "SUB") == 0)
+        {
+            binaryInst = (0b0001 << 12) | (reg1 << 6) | reg2;
+        }
+        else if (strcmp(mnemonic, "MUL") == 0)
+        {
+            binaryInst = (0b0010 << 12) | (reg1 << 6) | reg2;
+        }
+        else if (strcmp(mnemonic, "EOR") == 0)
+        {
+            binaryInst = (0b0110 << 12) | (reg1 << 6) | reg2;
+        }
+        else if (strcmp(mnemonic, "BR") == 0)
+        {
+            binaryInst = (0b0111 << 12) | (reg1 << 6) | reg2;
+        }
+        else
+        {
+            fprintf(stderr, "Error: Unknown R-format instruction: %s\n", mnemonic);
+            exit(EXIT_FAILURE);
+        }
+    }
+    else if (sscanf(line, "%4s R%d %d", mnemonic, &reg1, &immediate) == 3)
+    {
+        if (reg1 < 0 || reg1 > 63)
+        {
+            fprintf(stderr, "Error: Invalid register number in instruction: %s\n", line);
+            exit(EXIT_FAILURE);
+        }
+
+        if (immediate < -32 || immediate > 31)
+        {
+            fprintf(stderr, "Error: Immediate value out of range (-32 to 31) in instruction: %s\n", line);
+            exit(EXIT_FAILURE);
+        }
+
+        int sign_extended = immediate << 10 >> 10;
+
+        if (strcmp(mnemonic, "MOVI") == 0)
+        {
+            binaryInst = (0b0011 << 12) | (reg1 << 6) | (sign_extended & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "BEQZ") == 0)
+        {
+            binaryInst = (0b0100 << 12) | (reg1 << 6) | (sign_extended & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "ANDI") == 0)
+        {
+            binaryInst = (0b0101 << 12) | (reg1 << 6) | (sign_extended & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "SAL") == 0)
+        {
+            if (immediate < 0)
+            {
+                fprintf(stderr, "Error: Shift amount cannot be negative in instruction: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
+            binaryInst = (0b1000 << 12) | (reg1 << 6) | (immediate & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "SAR") == 0)
+        {
+            if (immediate < 0)
+            {
+                fprintf(stderr, "Error: Shift amount cannot be negative in instruction: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
+            binaryInst = (0b1001 << 12) | (reg1 << 6) | (immediate & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "LDR") == 0)
+        {
+            if (immediate < 0 || immediate > 2047)
+            {
+                fprintf(stderr, "Error: Memory address out of range (0-2047) in instruction: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
+            binaryInst = (0b1010 << 12) | (reg1 << 6) | (immediate & 0b0000000000111111);
+        }
+        else if (strcmp(mnemonic, "STR") == 0)
+        {
+            if (immediate < 0 || immediate > 2047)
+            {
+                fprintf(stderr, "Error: Memory address out of range (0-2047) in instruction: %s\n", line);
+                exit(EXIT_FAILURE);
+            }
+            binaryInst = (0b1011 << 12) | (reg1 << 6) | (immediate & 0b0000000000111111);
+        }
+        else
+        {
+            fprintf(stderr, "Error: Unknown I-format instruction: %s\n", mnemonic);
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+    {
+        fprintf(stderr, "Error: Invalid instruction format: %s\n", line);
+        exit(EXIT_FAILURE);
+    }
+
+    return binaryInst;
+}
+
+// void readProgramAndStore()
+// {
+//     FILE *fp = fopen("Program.txt", "r");
+//     if (!fp)
+//     {
+//         perror("Error opening Program.txt");
+//         exit(EXIT_FAILURE);
+//     }
+
+//     char line[100];
+//     int address = 0;
+
+//     while (fgets(line, sizeof(line), fp))
+//     {
+//         if (line[0] == '\n' || line[0] == '#' || strlen(line) < 2)
+//             continue;
+
+//         char instr[10];
+//         char op1[10], op2[10];
+//         int parsed = sscanf(line, "%s %s %s", instr, op1, op2);
+//         int opcode = -1;
+
+//         // Map mnemonics to opcodes
+//         if (strcmp(instr, "ADD") == 0)
+//             opcode = 0;
+//         else if (strcmp(instr, "SUB") == 0)
+//             opcode = 1;
+//         else if (strcmp(instr, "MUL") == 0)
+//             opcode = 2;
+//         else if (strcmp(instr, "MOVI") == 0)
+//             opcode = 3;
+//         else if (strcmp(instr, "BEQZ") == 0)
+//             opcode = 4;
+//         else if (strcmp(instr, "ANDI") == 0)
+//             opcode = 5;
+//         else if (strcmp(instr, "EOR") == 0)
+//             opcode = 6;
+//         else if (strcmp(instr, "BR") == 0)
+//             opcode = 7;
+//         else if (strcmp(instr, "SAL") == 0)
+//             opcode = 8;
+//         else if (strcmp(instr, "SAR") == 0)
+//             opcode = 9;
+//         else if (strcmp(instr, "LDR") == 0)
+//             opcode = 10;
+//         else if (strcmp(instr, "STR") == 0)
+//             opcode = 11;
+//         else
+//         {
+//             fprintf(stderr, "Unknown instruction: %s\n", instr);
+//             continue;
+//         }
+
+//         int r1 = 0, r2_or_imm = 0;
+//         if (op1[0] == 'R')
+//             r1 = atoi(&op1[1]);
+//         else
+//             r1 = atoi(op1);
+
+//         if (parsed == 3)
+//         {
+//             if (op2[0] == 'R')
+//                 r2_or_imm = atoi(&op2[1]);
+//             else
+//                 r2_or_imm = atoi(op2);
+//         }
+
+//         // Sign-extend imm to 6-bit if needed
+//         if (r2_or_imm < 0)
+//             r2_or_imm = (r2_or_imm & 0x3F);
+
+//         // Construct instruction
+//         uint16_t instruction;
+//         if (opcode <= 2 || opcode == 6 || opcode == 7)
+//         { // R-type
+//             instruction = (opcode << 12) | (r1 << 6) | (r2_or_imm & 0x3F);
+//         }
+//         else
+//         { // I-type
+//             instruction = (opcode << 12) | (r1 << 6) | (r2_or_imm & 0x3F);
+//         }
+
+//         storeInst(&instMem, address++, (uint16_t)instruction);
+//     }
+
+//     fclose(fp);
+// }
+
 void readProgramAndStore()
 {
-    FILE *fp = fopen("Program.txt", "r");
-    if (!fp)
+    FILE *file = fopen("Program.txt", "r");
+    if (!file)
     {
-        perror("Error opening Program.txt");
+        perror("Error opening program file");
         exit(EXIT_FAILURE);
     }
 
     char line[100];
-    int address = 0;
+    int pos = 0;
 
-    while (fgets(line, sizeof(line), fp))
+    printf("\n=== Loading Program into Instruction Memory ===\n");
+
+    while (fgets(line, sizeof(line), file))
     {
-        if (line[0] == '\n' || line[0] == '#' || strlen(line) < 2)
+        char *comment = strchr(line, ';');
+        if (comment)
+            *comment = '\0';
+
+        int len = strlen(line);
+        while (len > 0 && (line[len - 1] == ' ' || line[len - 1] == '\t' || line[len - 1] == '\n' || line[len - 1] == '\r'))
+        {
+            line[--len] = '\0';
+        }
+
+        if (len == 0)
             continue;
 
-        char instr[10];
-        char op1[10], op2[10];
-        int parsed = sscanf(line, "%s %s %s", instr, op1, op2);
-        int opcode = -1;
-
-        // Map mnemonics to opcodes
-        if (strcmp(instr, "ADD") == 0)
-            opcode = 0;
-        else if (strcmp(instr, "SUB") == 0)
-            opcode = 1;
-        else if (strcmp(instr, "MUL") == 0)
-            opcode = 2;
-        else if (strcmp(instr, "MOVI") == 0)
-            opcode = 3;
-        else if (strcmp(instr, "BEQZ") == 0)
-            opcode = 4;
-        else if (strcmp(instr, "ANDI") == 0)
-            opcode = 5;
-        else if (strcmp(instr, "EOR") == 0)
-            opcode = 6;
-        else if (strcmp(instr, "BR") == 0)
-            opcode = 7;
-        else if (strcmp(instr, "SAL") == 0)
-            opcode = 8;
-        else if (strcmp(instr, "SAR") == 0)
-            opcode = 9;
-        else if (strcmp(instr, "LDR") == 0)
-            opcode = 10;
-        else if (strcmp(instr, "STR") == 0)
-            opcode = 11;
-        else
+        if (pos >= 1024)
         {
-            fprintf(stderr, "Unknown instruction: %s\n", instr);
-            continue;
+            fprintf(stderr, "Error: Instruction memory full (max 1024 instructions)\n");
+            break;
         }
 
-        int r1 = 0, r2_or_imm = 0;
-        if (op1[0] == 'R')
-            r1 = atoi(&op1[1]);
-        else
-            r1 = atoi(op1);
+        short int binaryInst = assembleInstruction(line);
 
-        if (parsed == 3)
-        {
-            if (op2[0] == 'R')
-                r2_or_imm = atoi(&op2[1]);
-            else
-                r2_or_imm = atoi(op2);
-        }
+        storeInst(&instMem, pos, binaryInst);
 
-        // Sign-extend imm to 6-bit if needed
-        if (r2_or_imm < 0)
-            r2_or_imm = (r2_or_imm & 0x3F);
+        printf("[%04d] ", pos);
+        printBinary16(binaryInst);
+        printf("  | %s\n", line);
 
-        // Construct instruction
-        uint16_t instruction;
-        if (opcode <= 2 || opcode == 6 || opcode == 7)
-        { // R-type
-            instruction = (opcode << 12) | (r1 << 6) | (r2_or_imm & 0x3F);
-        }
-        else
-        { // I-type
-            instruction = (opcode << 12) | (r1 << 6) | (r2_or_imm & 0x3F);
-        }
-
-        storeInst(&instMem, address++, (uint16_t)instruction);
+        pos++;
     }
 
-    fclose(fp);
+    printf("=== Program Loaded (%d instructions) ===\n\n", pos);
+    fclose(file);
 }
 
 void ADD(int rd, int rs)
