@@ -156,15 +156,21 @@ void printMemory()
     printf("\n==== Instruction Memory ====\n");
     for (int i = 0; i < 1024; i++)
     {
-        uint16_t inst = loadInst(&instMem, i);
-        printf("IMEM[%d] = 0x%04X\n", i, inst);
+        if (loadInst(&instMem, i) && loadInst(&instMem, i) != 0xC000)
+        {
+            uint16_t inst = loadInst(&instMem, i);
+            printf("IMEM[%d] = 0x%04X\n", i, inst);
+        }
     }
 
     printf("\n==== Data Memory ====\n");
     for (int i = 0; i < 1024; i++)
     {
-        int8_t val = loadData(&dataMem, i);
-        printf("DMEM[%d] = %d\n", i, val);
+        if (loadData(&dataMem, i))
+        {
+            int8_t val = loadData(&dataMem, i);
+            printf("DMEM[%d] = %d\n", i, val);
+        }
     }
 }
 
