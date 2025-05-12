@@ -777,23 +777,23 @@ void run()
         if (stages[1] != -1)
         {
             printf("Decode stage : Instruction %d\n", stages[1] + 1);
-            trace("Operands: opr1 = R%d, opr2 = R%d, imm = %d", stageID.opr1, stageID.opr2, stageID.imm);
         }
         if (stages[2] != -1)
         {
             printf("Execute stage : Instruction %d\n", stages[2] + 1);
-            trace("Executing: %s on R%d, R%d, imm=%d", stageEX.mnemonic, stageEX.opr1, stageEX.opr2, stageEX.imm);
         }
 
         if (stages[2] != -1)
         {
             brInfo = execute(stageEX);
+            trace("Executing: %s on R%d, R%d, imm=%d", stageEX.mnemonic, stageEX.opr1, stageEX.opr2, stageEX.imm);
         }
         if (stages[1] != -1)
         {
             decodedInst = decode(fetchedInst);
             stageID = decodedInst;
             stageID.pcSnap = stages[1];
+            trace("Operands: opr1 = R%d, opr2 = R%d, imm = %d", stageID.opr1, stageID.opr2, stageID.imm);
         }
         if (stages[0] != -1)
         {
