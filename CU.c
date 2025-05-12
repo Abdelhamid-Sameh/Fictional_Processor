@@ -22,7 +22,6 @@ typedef struct
     int8_t opr1_value; // 1st Register value
     int8_t opr2_value; // 2nd Register value
     int8_t imm;        // Immediate OR Address
-    int8_t add_value;  // Memory value
     char mnemonic[5];  // Instruction name ("ADD", "SUB" and so on)
     uint16_t pcSnap;   // 3shan caputre
 } DecodedInst;
@@ -49,17 +48,19 @@ static void trace(const char *fmt, ...)
 static void writeReg(int r, int8_t val)
 {
     int8_t old = loadReg(&gprs, r);
-    if (old != val)
-        trace("R%d changed %d -> %d", r, old, val);
     storeReg(&gprs, r, val);
+    int8_t new = loadReg(&gprs, r);
+    if (old != new)
+        trace("R%d changed %d -> %d", r, old, new);
 }
 
 static void writeMem(uint16_t addr, int8_t val)
 {
     int8_t old = loadData(&dataMem, addr);
-    if (old != val)
-        trace("MEM[%d] changed %d -> %d", addr, old, val);
     storeData(&dataMem, addr, val);
+    int8_t new = loadData(&dataMem, addr);
+    if (old != new)
+        trace("MEM[%d] changed %d -> %d", addr, old, new);
 }
 
 #define F_C 0x10
@@ -179,7 +180,7 @@ void printBinary16(short int value)
     for (int i = 15; i >= 0; i--)
     {
         printf("%d", (value >> i) & 1);
-        if (i % 4 == 0 && i != 0)
+        if (i == 12 || i == 6)
             printf(" ");
     }
 }
@@ -460,7 +461,23 @@ void ADD(int rd, int8_t rs, int8_t rt)
     updateS();
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 void SUB(int rd, int8_t rs, int8_t rt)
@@ -476,7 +493,23 @@ void SUB(int rd, int8_t rs, int8_t rt)
     updateS();
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 void MUL(int rd, int8_t rs, int8_t rt)
@@ -489,7 +522,23 @@ void MUL(int rd, int8_t rs, int8_t rt)
     setNZ(res);
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 void EOR(int rd, int8_t rs, int8_t rt)
@@ -502,7 +551,23 @@ void EOR(int rd, int8_t rs, int8_t rt)
     setNZ(res);
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 BranchInfo BR(int8_t rHigh, int8_t rLow)
@@ -542,7 +607,23 @@ void ANDI(int rd, int8_t rs, int8_t imm)
     setNZ(res);
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 void SAL(int rd, int8_t rs, int8_t imm)
@@ -555,7 +636,23 @@ void SAL(int rd, int8_t rs, int8_t imm)
     setNZ(res);
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
 void SAR(int rd, int8_t rs, int8_t imm)
@@ -568,11 +665,28 @@ void SAR(int rd, int8_t rs, int8_t imm)
     setNZ(res);
 
     if (oldS != sprs.SREG)
-        trace("SREG 0x%02X -> 0x%02X", oldS, sprs.SREG);
+    {
+        char str[256] = "    >> SREG ";
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (oldS >> i) & 1);
+            strcat(str, numStr);
+        }
+        strcat(str, " -> ");
+        for (int i = 4; i >= 0; i--)
+        {
+            char numStr[10];
+            sprintf(numStr, "%d", (sprs.SREG >> i) & 1);
+            strcat(str, numStr);
+        }
+        printf("%s\n", str);
+    }
 }
 
-void LDR(int rd, int8_t add_val) /* no flags */
+void LDR(int rd, int8_t add) /* no flags */
 {
+    int8_t add_val = loadData(&dataMem, add);
     writeReg(rd, add_val); /* prints “R changed …” */
 }
 
@@ -591,7 +705,12 @@ uint16_t fetch(int PC)
 
     uint16_t instruction = loadInst(&instMem, PC);
 
-    printf("Fetched instruction %04X\n", instruction);
+    uint8_t firstDigit = (instruction >> 12) & 0xF;
+
+    uint8_t middle6 = (instruction >> 6) & 0x3F;
+    uint8_t last6 = instruction & 0x3F;
+
+    printf("Fetched instruction %01X%01X%01X\n", firstDigit, middle6, last6);
 
     return instruction;
 }
@@ -622,8 +741,6 @@ DecodedInst decode(uint16_t inst)
     decoded.opr2_value = loadReg(&gprs, decoded.opr2);
 
     decoded.imm = inst & 0b00111111;
-
-    decoded.add_value = loadData(&dataMem, decoded.imm);
 
     if (decoded.imm & 0b100000)
     {
@@ -722,7 +839,7 @@ BranchInfo execute(DecodedInst d)
         SAR(d.opr1, d.opr1_value, d.imm);
         break;
     case OP_LDR:
-        LDR(d.opr1, d.add_value);
+        LDR(d.opr1, d.imm);
         break;
     case OP_STR:
         STR(d.opr1_value, d.imm);
