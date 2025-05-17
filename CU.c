@@ -23,7 +23,7 @@ typedef struct
     int8_t opr2_value; // 2nd Register value
     int8_t imm;        // Immediate OR Address
     char mnemonic[5];  // Instruction name ("ADD", "SUB" and so on)
-    uint16_t pcSnap;   // 3shan caputre
+    uint16_t pcSnap;   // A snapshot of PC
 } DecodedInst;
 
 typedef struct
@@ -63,12 +63,6 @@ static void writeMem(uint16_t addr, int8_t val)
         trace("MEM[%d] changed %d -> %d", addr, old, new);
 }
 
-#define F_C 0x10
-#define F_V 0x08
-#define F_N 0x04
-#define F_S 0x02
-#define F_Z 0x01
-
 int clock_cycles = 1;
 int stages[3] = {-1, -1, -1};
 
@@ -91,47 +85,47 @@ enum Opcodes
 static void setNZ(int8_t res)
 {
     if (res == 0)
-        sprs.SREG |= F_Z;
+        setZ(&sprs);
     else
-        sprs.SREG &= ~F_Z;
+        unsetZ(&sprs);
     if (res & 0x80)
-        sprs.SREG |= F_N;
+        setN(&sprs);
     else
-        sprs.SREG &= ~F_N;
+        unsetN(&sprs);
 }
 
 static void setCarry(uint16_t wide) /* ADD only */
 {
     if (wide & 0x100)
-        sprs.SREG |= F_C;
+        setC(&sprs);
     else
-        sprs.SREG &= ~F_C;
+        unsetC(&sprs);
 }
 
 static void setV_add(int8_t a, int8_t b, int8_t res) /* ADD */
 {
     if (((a ^ b) & 0x80) == 0 && ((a ^ res) & 0x80))
-        sprs.SREG |= F_V;
+        setV(&sprs);
     else
-        sprs.SREG &= ~F_V;
+        unsetV(&sprs);
 }
 
 static void setV_sub(int8_t a, int8_t b, int8_t res) /* SUB = a-b */
 {
     if (((a ^ b) & 0x80) && ((a ^ res) & 0x80))
-        sprs.SREG |= F_V;
+        setV(&sprs);
     else
-        sprs.SREG &= ~F_V;
+        unsetV(&sprs);
 }
 
 static void updateS(void) /* S = N xor V */
 {
-    int n = (sprs.SREG & F_N) ? 1 : 0;
-    int v = (sprs.SREG & F_V) ? 1 : 0;
+    int n = getN(&sprs);
+    int v = getV(&sprs);
     if (n ^ v)
-        sprs.SREG |= F_S;
+        setS(&sprs);
     else
-        sprs.SREG &= ~F_S;
+        unsetS(&sprs);
 }
 
 void printAllRegs()
@@ -145,11 +139,11 @@ void printAllRegs()
     printf("PC   = %u\n", sprs.PC);
     printf("SREG = 0x%02X [C=%d V=%d N=%d S=%d Z=%d]\n",
            sprs.SREG,
-           !!(sprs.SREG & F_C),
-           !!(sprs.SREG & F_V),
-           !!(sprs.SREG & F_N),
-           !!(sprs.SREG & F_S),
-           !!(sprs.SREG & F_Z));
+           !!getC(&sprs),
+           !!getV(&sprs),
+           !!getN(&sprs),
+           !!getS(&sprs),
+           !!getZ(&sprs));
 }
 
 void printMemory()
