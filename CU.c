@@ -230,7 +230,11 @@ short int assembleInstruction(const char *line)
             exit(EXIT_FAILURE);
         }
 
-        if (immediate < -32 || immediate > 31)
+        if ((strcmp(mnemonic, "LDR") || strcmp(mnemonic, "STR")) && (immediate < 0 || immediate > 63))
+        {
+            fprintf(stderr, "Error: Address out of range (0 to 63) in instruction: %s\n", line);
+        }
+        else if (immediate < -32 || immediate > 31)
         {
             fprintf(stderr, "Error: Immediate value out of range (-32 to 31) in instruction: %s\n", line);
             exit(EXIT_FAILURE);
