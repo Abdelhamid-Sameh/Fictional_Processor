@@ -3,11 +3,12 @@
 
 #include <stdint.h>
 
-typedef struct {
+typedef struct
+{
     int8_t data[2048];
 } DataMemory;
 
-void storeData(DataMemory* memory, int pos, int8_t data);
-int8_t loadData(DataMemory* memory, int pos);
+void storeData(DataMemory *memory, int pos, int8_t val);
+int8_t loadData(DataMemory *memory, int pos);
 
 #endif

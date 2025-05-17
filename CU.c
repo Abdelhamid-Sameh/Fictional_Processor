@@ -57,7 +57,7 @@ static void writeReg(int r, int8_t val)
 static void writeMem(uint16_t addr, int8_t val)
 {
     int8_t old = loadData(&dataMem, addr);
-    storeData(&dataMem, addr, val);
+    storeData(&dataMem, (int)addr, val);
     int8_t new = loadData(&dataMem, addr);
     if (old != new)
         trace("MEM[%d] changed %d -> %d", addr, old, new);
@@ -865,13 +865,16 @@ void run()
         stageEX = stageID;
         stages[1] = stages[0];
 
+        printf("PC = %d\n", sprs.PC);
+
         if (brInfo.taken)
         {
             stages[1] = -1;
             stages[2] = -1;
             brInfo.taken = 0;
         }
-        else if (loadInst(&instMem, sprs.PC) != 0xC000)
+
+        if (loadInst(&instMem, sprs.PC) != 0xC000)
         {
             stages[0] = sprs.PC;
 

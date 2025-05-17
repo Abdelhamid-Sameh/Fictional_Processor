@@ -7,19 +7,19 @@ typedef struct
     int8_t data[2048];
 } DataMemory;
 
-void storeData(DataMemory *memory, int pos, int8_t data)
+void storeData(DataMemory *memory, int pos, int8_t val)
 {
     if (pos < 0 || pos > 2047)
     {
         printf("Invalid position");
         return;
     }
-    memory->data[pos] = data;
+    memory->data[pos] = val;
 }
 
 int8_t loadData(DataMemory *memory, int pos)
 {
-    if (pos < 0 || pos > 2074)
+    if (pos < 0 || pos > 2047)
     {
         printf("Invalid position");
         return -1;
