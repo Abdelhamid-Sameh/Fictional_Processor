@@ -867,7 +867,8 @@ void run()
 
         if (brInfo.taken)
         {
-            stages[0] = -1;
+            stages[1] = -1;
+            stages[2] = -1;
             brInfo.taken = 0;
         }
         else if (loadInst(&instMem, sprs.PC) != 0xC000)
@@ -884,7 +885,7 @@ void run()
             break;
         }
 
-        printf("Clock cycle : %d\n", clock_cycles);
+        printf("Clock cycle : %d -----------------------\n\n", clock_cycles);
         if (stages[0] != -1)
         {
             printf("Fetch stage : Instruction %d\n", stages[0] + 1);
@@ -914,7 +915,7 @@ void run()
         {
             fetchedInst = fetch(stages[0]);
         }
-        printf("PC = %d\n", sprs.PC);
+        printf("PC = %d\n\n", sprs.PC);
         clock_cycles++;
 
     } while (stages[0] != -1 || stages[1] != -1 || stages[2] != -1);
