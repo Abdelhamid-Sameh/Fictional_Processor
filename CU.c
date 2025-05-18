@@ -50,8 +50,7 @@ static void writeReg(int r, int8_t val)
     int8_t old = loadReg(&gprs, r);
     storeReg(&gprs, r, val);
     int8_t new = loadReg(&gprs, r);
-    if (old != new)
-        trace("R%d changed %d -> %d", r, old, new);
+    trace("R%d changed %d -> %d", r, old, new);
 }
 
 static void writeMem(uint16_t addr, int8_t val)
@@ -59,8 +58,7 @@ static void writeMem(uint16_t addr, int8_t val)
     int8_t old = loadData(&dataMem, addr);
     storeData(&dataMem, (int)addr, val);
     int8_t new = loadData(&dataMem, addr);
-    if (old != new)
-        trace("MEM[%d] changed %d -> %d", addr, old, new);
+    trace("MEM[%d] changed %d -> %d", addr, old, new);
 }
 
 int clock_cycles = 1;
@@ -176,6 +174,14 @@ void printBinary16(short int value)
         printf("%d", (value >> i) & 1);
         if (i == 12 || i == 6)
             printf(" ");
+    }
+}
+
+void printBinary16NoSpace(short int value)
+{
+    for (int i = 15; i >= 0; i--)
+    {
+        printf("%d", (value >> i) & 1);
     }
 }
 
@@ -708,7 +714,7 @@ uint16_t fetch(int PC)
     uint8_t middle6 = (instruction >> 6) & 0x3F;
     uint8_t last6 = instruction & 0x3F;
 
-    printf("Fetched instruction %01X%01X%01X\n", firstDigit, middle6, last6);
+    printf("\nFetched instruction %01X%01X%01X\n", firstDigit, middle6, last6);
 
     return instruction;
 }
@@ -788,7 +794,7 @@ DecodedInst decode(uint16_t inst)
         break;
     }
 
-    printf("Decoded instruction: %s R%d", decoded.mnemonic, decoded.opr1);
+    printf("\nDecoded instruction: %s R%d", decoded.mnemonic, decoded.opr1);
     if (decoded.Type == 'R')
     {
         printf(" R%d\n", decoded.opr2);
@@ -904,21 +910,24 @@ void run()
 
         if (stages[2] != -1)
         {
+            printf("\nExecuting: %s on R%d, R%d, imm/address=%d\n", stageEX.mnemonic, stageEX.opr1, stageEX.opr2, stageEX.imm);
             brInfo = execute(stageEX);
-            trace("Executing: %s on R%d, R%d, imm=%d", stageEX.mnemonic, stageEX.opr1, stageEX.opr2, stageEX.imm);
         }
         if (stages[1] != -1)
         {
             decodedInst = decode(fetchedInst);
             stageID = decodedInst;
             stageID.pcSnap = stages[1];
-            trace("Operands: opr1 = R%d, opr2 = R%d, imm = %d", stageID.opr1, stageID.opr2, stageID.imm);
+            trace("Operands: opr1 = R%d, opr2 = R%d, imm/address = %d", stageID.opr1, stageID.opr2, stageID.imm);
         }
         if (stages[0] != -1)
         {
             fetchedInst = fetch(stages[0]);
+            printf("    >> Instruction: ");
+            printBinary16NoSpace(fetchedInst);
+            printf("\n");
         }
-        printf("PC = %d\n\n", sprs.PC);
+        printf("\nPC = %d\n\n", sprs.PC);
         clock_cycles++;
 
     } while (stages[0] != -1 || stages[1] != -1 || stages[2] != -1);
