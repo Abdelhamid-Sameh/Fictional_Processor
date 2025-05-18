@@ -401,7 +401,7 @@ short int assembleInstruction(const char *line)
 
 void readProgramAndStore()
 {
-    FILE *file = fopen("Program.txt", "r");
+    FILE *file = fopen("Program2.txt", "r");
     if (!file)
     {
         perror("Error opening program file");
@@ -577,7 +577,11 @@ void EOR(int rd, int8_t rs, int8_t rt)
 BranchInfo BR(int8_t rHigh, int8_t rLow)
 {
     uint16_t target = (rHigh << 8) | rLow;
-
+    uint16_t upcomingInst = loadInst(&instMem, target + 1);
+    if (upcomingInst == 00000000000000000)
+    {
+        return (BranchInfo){0, 0};
+    }
     sprs.PC = target;
     trace("PC <- %u  (BR)", target);
 
@@ -594,6 +598,11 @@ BranchInfo BEQZ(int8_t rd, int8_t imm, uint16_t pcSnap)
     if (rd == 0)
     {
         uint16_t target = pcSnap + 1 + (int8_t)imm;
+        uint16_t upcomingInst = loadInst(&instMem, target + 1);
+        if (upcomingInst == 00000000000000000)
+        {
+            return (BranchInfo){0, 0};
+        }
         sprs.PC = target;
         trace("PC <- %u  (BEQZ taken)", target);
         return (BranchInfo){1, target};
@@ -883,7 +892,6 @@ void run()
         if (loadInst(&instMem, sprs.PC) != 0xC000)
         {
             stages[0] = sprs.PC;
-
             incPC(&sprs);
         }
         else
