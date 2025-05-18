@@ -347,8 +347,10 @@ void readProgramAndStore()
         pos++;
     }
 
-    storeInst(&instMem, pos, 0xC000);
-    flag = pos;
+    for (int i = pos; i < 1024; i++)
+    {
+        storeInst(&instMem, i, 0xC000);
+    }
 
     printf("=== Program Loaded (%d instructions) ===\n\n", pos);
     fclose(file);
@@ -480,9 +482,22 @@ void EOR(int rd, int8_t rs, int8_t rt)
 BranchInfo BR(int8_t rHigh, int8_t rLow)
 {
     uint16_t target = (rHigh << 8) | rLow;
-
-    if (target >= flag)
+    if (target >= 1024)
     {
+        printf("   %hu", target);
+        printf("   Rejected: target is out of memory bound");
+        return (BranchInfo){0, 0};
+    }
+    if (loadInst(&instMem, target) == 0xC000)
+    {
+        printf("   %hu", target);
+        printf("   Rejected: target is not initialized");
+        return (BranchInfo){0, 0};
+    }
+    if (target == sprs.PC)
+    {
+        printf("   %hu", target);
+        printf("   Rejected: target will cause an infinite loop");
         return (BranchInfo){0, 0};
     }
     sprs.PC = target;
@@ -501,10 +516,25 @@ BranchInfo BEQZ(int8_t rd, int8_t imm, uint16_t pcSnap)
     if (rd == 0)
     {
         uint16_t target = pcSnap + 1 + (int8_t)imm;
-        if (target >= flag)
+        if (target >= 1024)
         {
+            printf("   %hu", target);
+            printf("   Rejected: target is out of memory bound");
             return (BranchInfo){0, 0};
         }
+        if (loadInst(&instMem, target) == 0xC000)
+        {
+            printf("   %hu", target);
+            printf("   Rejected: target is not initialized");
+            return (BranchInfo){0, 0};
+        }
+        if (target == sprs.PC)
+        {
+            printf("   %hu", target);
+            printf("   Rejected: target will cause an infinite loop");
+            return (BranchInfo){0, 0};
+        }
+
         sprs.PC = target;
         trace("PC <- %u  (BEQZ taken)", target);
         return (BranchInfo){1, target};
