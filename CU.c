@@ -12,7 +12,7 @@ InstMemory instMem;
 DataMemory dataMem;
 GPRS gprs;
 SPRS sprs;
-
+int flag;
 typedef struct
 {
     int operation;     // 0 - 11
@@ -446,6 +446,7 @@ void readProgramAndStore()
     }
 
     storeInst(&instMem, pos, 0xC000);
+    flag = pos;
 
     printf("=== Program Loaded (%d instructions) ===\n\n", pos);
     fclose(file);
@@ -577,8 +578,8 @@ void EOR(int rd, int8_t rs, int8_t rt)
 BranchInfo BR(int8_t rHigh, int8_t rLow)
 {
     uint16_t target = (rHigh << 8) | rLow;
-    uint16_t upcomingInst = loadInst(&instMem, target + 1);
-    if (upcomingInst == 00000000000000000)
+
+    if (target >= flag)
     {
         return (BranchInfo){0, 0};
     }
@@ -598,8 +599,7 @@ BranchInfo BEQZ(int8_t rd, int8_t imm, uint16_t pcSnap)
     if (rd == 0)
     {
         uint16_t target = pcSnap + 1 + (int8_t)imm;
-        uint16_t upcomingInst = loadInst(&instMem, target + 1);
-        if (upcomingInst == 00000000000000000)
+        if (target >= flag)
         {
             return (BranchInfo){0, 0};
         }
