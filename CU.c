@@ -303,7 +303,7 @@ short int assembleInstruction(const char *line)
 
 void readProgramAndStore()
 {
-    FILE *file = fopen("Program3.txt", "r");
+    FILE *file = fopen("Program2.txt", "r");
     if (!file)
     {
         perror("Error opening program file");
@@ -650,7 +650,7 @@ DecodedInst decode(uint16_t inst)
 
     decoded.imm = inst & 0b00111111;
 
-    if (decoded.imm & 0b100000)
+    if ((decoded.imm & 0b100000) && (decoded.operation != OP_LDR) && (decoded.operation != OP_STR) && (decoded.operation != OP_SAL) && (decoded.operation != OP_SAR))
     {
         decoded.imm |= 0b11000000; // Sign extend to 8 bits
     }
