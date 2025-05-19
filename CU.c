@@ -482,24 +482,6 @@ void EOR(int rd, int8_t rs, int8_t rt)
 BranchInfo BR(int8_t rHigh, int8_t rLow)
 {
     uint16_t target = (rHigh << 8) | rLow;
-    if (target >= 1024)
-    {
-        printf("   %hu", target);
-        printf("   Rejected: target is out of memory bound");
-        return (BranchInfo){0, 0};
-    }
-    if (loadInst(&instMem, target) == 0xC000)
-    {
-        printf("   %hu", target);
-        printf("   Rejected: target is not initialized");
-        return (BranchInfo){0, 0};
-    }
-    if (target == sprs.PC)
-    {
-        printf("   %hu", target);
-        printf("   Rejected: target will cause an infinite loop");
-        return (BranchInfo){0, 0};
-    }
     sprs.PC = target;
     trace("PC <- %u  (BR)", target);
 
@@ -516,25 +498,6 @@ BranchInfo BEQZ(int8_t rd, int8_t imm, uint16_t pcSnap)
     if (rd == 0)
     {
         uint16_t target = pcSnap + 1 + (int8_t)imm;
-        if (target >= 1024)
-        {
-            printf("   %hu", target);
-            printf("   Rejected: target is out of memory bound");
-            return (BranchInfo){0, 0};
-        }
-        if (loadInst(&instMem, target) == 0xC000)
-        {
-            printf("   %hu", target);
-            printf("   Rejected: target is not initialized");
-            return (BranchInfo){0, 0};
-        }
-        if (target == sprs.PC)
-        {
-            printf("   %hu", target);
-            printf("   Rejected: target will cause an infinite loop");
-            return (BranchInfo){0, 0};
-        }
-
         sprs.PC = target;
         trace("PC <- %u  (BEQZ taken)", target);
         return (BranchInfo){1, target};
@@ -655,7 +618,7 @@ uint16_t fetch(int PC)
     uint8_t middle6 = (instruction >> 6) & 0x3F;
     uint8_t last6 = instruction & 0x3F;
 
-    printf("\nFetched instruction %01X%01X%01X\n", firstDigit, middle6, last6);
+    printf("\nFetched instruction %01X %01X %01X\n", firstDigit, middle6, last6);
 
     return instruction;
 }
@@ -821,7 +784,7 @@ void run()
             brInfo.taken = 0;
         }
 
-        if (loadInst(&instMem, sprs.PC) != 0xC000)
+        if (loadInst(&instMem, sprs.PC) != 0xC000 && sprs.PC >= 0 && sprs.PC < 1023)
         {
             stages[0] = sprs.PC;
             incPC(&sprs);
