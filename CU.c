@@ -303,7 +303,7 @@ short int assembleInstruction(const char *line)
 
 void readProgramAndStore()
 {
-    FILE *file = fopen("Program2.txt", "r");
+    FILE *file = fopen("Program3.txt", "r");
     if (!file)
     {
         perror("Error opening program file");
